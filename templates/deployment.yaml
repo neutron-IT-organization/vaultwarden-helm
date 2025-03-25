@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-deployment
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      restartPolicy: Always
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      securityContext:
+        runAsUser: 33
+        fsGroup: 33
+      containers:
+        - name: bitwarden
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: websocket
+              containerPort: 3012
+              protocol: TCP
+          volumeMounts:
+            - name: data-volume
+              mountPath: /data
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-configmap
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-pvc
+
